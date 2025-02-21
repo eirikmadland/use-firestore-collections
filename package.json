@@ -1,0 +1,29 @@
+{
+  "name": "use-firestore-collections",
+  "version": "0.1.0",
+  "description": "A Vue composable that provides reactive Firestore collections with authentication lifecycle handling.",
+  "main": "dist/index.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"No tests yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eirikmadland/use-firestore-collections.git"
+  },
+  "keywords": [
+    "vue",
+    "firestore",
+    "composable",
+    "firebase",
+    "reactivity"
+  ],
+  "author": "Eirik Madland",
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": "^3.0.0",
+    "firebase": "^9.0.0"
+  }
+}

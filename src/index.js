@@ -67,19 +67,25 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
       if (user) {
         if (!unsubscribeSnapshot) {
           loading.value = true;
-          const colRef = collection(db, name);
-          unsubscribeSnapshot = onSnapshot(
-            colRef,
-            (snapshot) => {
-              data.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              loading.value = false;
-              error.value = null;
-            },
-            (err) => {
-              error.value = err;
-              loading.value = false;
-            }
-          );
+          console.log('About to call collection() with db:', db, 'and collection name:', name);
+          try {
+            const colRef = collection(db, name);
+            console.log('Obtained colRef:', colRef);
+            unsubscribeSnapshot = onSnapshot(
+              colRef,
+              (snapshot) => {
+                data.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                loading.value = false;
+                error.value = null;
+              },
+              (err) => {
+                error.value = err;
+                loading.value = false;
+              }
+            );
+          } catch (e) {
+            console.error('Error when calling collection(db, name):', e);
+          }
         }
       } else {
         if (unsubscribeSnapshot) {
@@ -91,7 +97,7 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
         loading.value = false;
       }
     });
-
+    
     // Store the reactive state and the auth unsubscribe function.
     collectionsState[name] = { data, loading, error, unsubscribeAuth };
   }

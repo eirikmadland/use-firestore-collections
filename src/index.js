@@ -1,5 +1,5 @@
 /**
- * useFirestoreCollections - A Vue composable for reactive Firestore collections
+ * use-firestoreCollections - A Vue composable for reactive Firestore collections
  * with automatic handling of Firebase Authentication lifecycle.
  *
  * This package expects Firebase to be initialized in your project or passed in.
@@ -8,7 +8,7 @@
  */
 
 import { ref } from 'vue'
-import { getFirestore, collection, onSnapshot } from 'firebase/firestore'
+import { getFirestore, collection, onSnapshot, Firestore } from 'firebase/firestore'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { getApps } from 'firebase/app'
 
@@ -52,8 +52,10 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
     const db = firestoreInstance || getFirestore(app);
     const auth = getAuth(app);
 
+    // Extended logging to inspect the Firestore instance.
     console.log('Using Firestore instance:', db);
     console.log('db constructor:', db?.constructor?.name);
+    console.log('db instanceof Firestore:', db instanceof Firestore);
     console.log('db is instance of Object:', db instanceof Object);
 
     // Create reactive references.

@@ -1,22 +1,39 @@
 /**
- * use-firestoreCollections - A Vue composable for reactive Firestore collections
+ * use-firestore-collections - A Vue 3 composable for reactive Firestore collections
  * with automatic handling of Firebase Authentication lifecycle.
  *
- * This package expects Firebase to be initialized in your project or passed in.
+ * This library assumes Firebase is already initialized in your project,
+ * but allows you to pass in your initialized Firebase app, Firestore, and Auth instances.
  *
- * Dependencies: Vue 3, Firebase 9+
+ * Usage example:
+ * 
+ * import { useFirestoreCollections } from 'use-firestore-collections';
+ * import { app as firebaseApp, db, auth } from './firebase'; // your firebase.js exports
+ * 
+ * const { users, posts } = useFirestoreCollections(
+ *   ['users', 'posts'],
+ *   firebaseApp, // optional; defaults to the default app
+ *   db,          // optional; defaults to getFirestore(firebaseApp)
+ *   auth         // optional; defaults to getAuth(firebaseApp)
+ * );
+ *
+ * Each collection subscription returns reactive properties: data, loading, and error.
+ *
+ * Version: 1.0.8
+ *
+ * Peer Dependencies: Vue 3, Firebase (^9.0.0 || ^11.0.0)
  */
 
-import { ref } from 'vue'
-import { getFirestore, collection, onSnapshot, Firestore } from 'firebase/firestore'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { getApps } from 'firebase/app'
+import { ref } from 'vue';
+import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getApps } from 'firebase/app';
 
 /**
  * ensureFirebaseInitialized
  *
- * Checks if a Firebase app is available. If an instance is provided,
- * it returns that. Otherwise, it returns the first initialized app.
+ * Checks if a Firebase app is available. If an instance is provided, returns that.
+ * Otherwise, returns the first initialized app.
  *
  * @param {object} firebaseAppInstance - Optional Firebase app instance.
  * @returns {object} The Firebase app instance.
@@ -25,37 +42,38 @@ import { getApps } from 'firebase/app'
 function ensureFirebaseInitialized(firebaseAppInstance) {
   const app = firebaseAppInstance || (getApps().length ? getApps()[0] : null);
   if (!app) {
-    throw new Error('No Firebase App initialized. Please call initializeApp() before using this composable, or pass the firebase app instance as a parameter.');
+    throw new Error(
+      'No Firebase App initialized. Please call initializeApp() before using this composable, or pass the firebase app instance as a parameter.'
+    );
   }
   return app;
 }
 
-// Object to store the state for each subscribed Firestore collection.
-// This ensures each collection is only subscribed once (singleton pattern).
-const collectionsState = {}
+// Global store for collection subscriptions
+const collectionsState = {};
 
 /**
  * subscribeToCollection
  *
- * Sets up a Firestore subscription for the specified collection name and listens
- * for Firebase Auth state changes to handle subscription lifecycle automatically.
+ * Subscribes to a Firestore collection and sets up a reactive state that updates
+ * automatically. Manages authentication state changes to start or stop the subscription.
  *
  * @param {string} name - The Firestore collection name.
  * @param {object} firebaseAppInstance - Optional Firebase app instance.
  * @param {object} firestoreInstance - Optional Firestore instance.
+ * @param {object} authInstance - Optional Auth instance.
  */
-function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
+function subscribeToCollection(name, firebaseAppInstance, firestoreInstance, authInstance) {
   if (!collectionsState[name]) {
-    // Ensure Firebase is initialized (or get the passed instance)
+    // Ensure Firebase is initialized.
     const app = ensureFirebaseInitialized(firebaseAppInstance);
-    // Use the provided Firestore instance if available; otherwise, get it from the app.
+    // Use provided Firestore instance if available; otherwise, get it from the app.
     const db = firestoreInstance || getFirestore(app);
-    const auth = getAuth(app);
+    // Use provided Auth instance if available; otherwise, get it from the app.
+    const auth = authInstance || getAuth(app);
 
-    // Extended logging to inspect the Firestore instance.
     console.log('Using Firestore instance:', db);
     console.log('db constructor:', db?.constructor?.name);
-    console.log('db instanceof Firestore:', db instanceof Firestore);
     console.log('db is instance of Object:', db instanceof Object);
 
     // Create reactive references.
@@ -63,7 +81,6 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
     const loading = ref(true);
     const error = ref(null);
 
-    // Variable to store the Firestore snapshot unsubscribe function.
     let unsubscribeSnapshot = null;
 
     // Listen for authentication state changes.
@@ -102,7 +119,7 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
       }
     });
 
-    // Store the reactive state and the auth unsubscribe function.
+    // Save the reactive state and unsubscribe function.
     collectionsState[name] = { data, loading, error, unsubscribeAuth };
   }
 }
@@ -110,16 +127,25 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
 /**
  * useFirestoreCollections
  *
- * Main composable that accepts an array of Firestore collection names and optional Firebase
- * app and Firestore instances, and returns an object mapping each name to its reactive state.
+ * Main composable function. Accepts an array of collection names and optional
+ * Firebase app, Firestore, and Auth instances, and returns an object mapping each
+ * collection name to its reactive state.
  *
  * @param {string[]} collectionNames - An array of Firestore collection names.
  * @param {object} firebaseAppInstance - Optional Firebase app instance.
  * @param {object} firestoreInstance - Optional Firestore instance.
- * @returns {Object} An object containing the reactive state for each collection.
+ * @param {object} authInstance - Optional Auth instance.
+ * @returns {Object} An object mapping each collection name to a reactive state object with properties: data, loading, error.
  */
-export function useFirestoreCollections(collectionNames = [], firebaseAppInstance, firestoreInstance) {
-  collectionNames.forEach(name => subscribeToCollection(name, firebaseAppInstance, firestoreInstance));
+export function useFirestoreCollections(
+  collectionNames = [],
+  firebaseAppInstance,
+  firestoreInstance,
+  authInstance
+) {
+  collectionNames.forEach(name =>
+    subscribeToCollection(name, firebaseAppInstance, firestoreInstance, authInstance)
+  );
 
   const result = {};
   collectionNames.forEach(name => {

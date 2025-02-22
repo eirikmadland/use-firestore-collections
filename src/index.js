@@ -11,11 +11,14 @@
 import { ref } from 'vue'
 import { getFirestore, collection, onSnapshot } from 'firebase/firestore'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { getApps } from 'firebase/app'
 
-// Retrieve the default Firestore and Auth instances from the default Firebase app.
-// Ensure that Firebase is already initialized in your consuming project.
-const db = getFirestore()
-const auth = getAuth()
+// Helper to ensure Firebase is initialized before accessing Firestore/Auth
+function ensureFirebaseInitialized() {
+  if (!getApps().length) {
+    throw new Error('No Firebase App initialized. Please call initializeApp() before using this composable.')
+  }
+}
 
 // Object to store the state for each subscribed Firestore collection.
 // This ensures each collection is only subscribed once (singleton pattern).
@@ -31,16 +34,23 @@ const collectionsState = {}
  */
 function subscribeToCollection(name) {
   if (!collectionsState[name]) {
+    // Make sure Firebase is initialized before accessing its services.
+    ensureFirebaseInitialized();
+    
+    // Lazily get Firestore and Auth instances.
+    const db = getFirestore();
+    const auth = getAuth();
+    
     // Create reactive references for:
     // - data: to hold the documents,
     // - loading: to indicate if data is being fetched,
     // - error: to capture any errors.
-    const data = ref([])
-    const loading = ref(true)
-    const error = ref(null)
+    const data = ref([]);
+    const loading = ref(true);
+    const error = ref(null);
 
     // Variable to store the Firestore snapshot unsubscribe function.
-    let unsubscribeSnapshot = null
+    let unsubscribeSnapshot = null;
 
     // Listen for authentication state changes.
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -49,35 +59,35 @@ function subscribeToCollection(name) {
         // subscribe to the Firestore collection.
         if (!unsubscribeSnapshot) {
           // Set loading to true in case we're re-subscribing.
-          loading.value = true
-          const colRef = collection(db, name)
+          loading.value = true;
+          const colRef = collection(db, name);
           unsubscribeSnapshot = onSnapshot(
             colRef,
             (snapshot) => {
               // Update reactive data with the latest snapshot documents.
-              data.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-              loading.value = false
-              error.value = null // Clear any previous error.
+              data.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              loading.value = false;
+              error.value = null; // Clear any previous error.
             },
             (err) => {
               // If an error occurs, update the error state and stop loading.
-              error.value = err
-              loading.value = false
+              error.value = err;
+              loading.value = false;
             }
-          )
+          );
         }
       } else {
         // When the user signs out, unsubscribe from the Firestore collection.
         if (unsubscribeSnapshot) {
-          unsubscribeSnapshot()
-          unsubscribeSnapshot = null
+          unsubscribeSnapshot();
+          unsubscribeSnapshot = null;
         }
         // Clear data and set an error indicating the user is not authenticated.
-        data.value = []
-        error.value = new Error('User not authenticated')
-        loading.value = false
+        data.value = [];
+        error.value = new Error('User not authenticated');
+        loading.value = false;
       }
-    })
+    });
 
     // Save the reactive state and the auth unsubscribe function for this collection.
     collectionsState[name] = {
@@ -85,7 +95,7 @@ function subscribeToCollection(name) {
       loading,
       error,
       unsubscribeAuth
-    }
+    };
   }
 }
 
@@ -100,17 +110,17 @@ function subscribeToCollection(name) {
  */
 export function useFirestoreCollections(collectionNames = []) {
   // Initialize subscriptions for each collection name provided.
-  collectionNames.forEach(name => subscribeToCollection(name))
+  collectionNames.forEach(name => subscribeToCollection(name));
 
   // Construct an object to expose the reactive states.
-  const result = {}
+  const result = {};
   collectionNames.forEach(name => {
     result[name] = {
       data: collectionsState[name].data,
       loading: collectionsState[name].loading,
       error: collectionsState[name].error
-    }
-  })
+    };
+  });
 
-  return result
+  return result;
 }

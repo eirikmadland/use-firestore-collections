@@ -53,7 +53,9 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
     const auth = getAuth(app);
 
     console.log('Using Firestore instance:', db);
-    
+    console.log('db constructor:', db?.constructor?.name);
+    console.log('db is instance of Object:', db instanceof Object);
+
     // Create reactive references.
     const data = ref([]);
     const loading = ref(true);
@@ -97,7 +99,7 @@ function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
         loading.value = false;
       }
     });
-    
+
     // Store the reactive state and the auth unsubscribe function.
     collectionsState[name] = { data, loading, error, unsubscribeAuth };
   }

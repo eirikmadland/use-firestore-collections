@@ -42,15 +42,18 @@ const collectionsState = {}
  *
  * @param {string} name - The Firestore collection name.
  * @param {object} firebaseAppInstance - Optional Firebase app instance.
+ * @param {object} firestoreInstance - Optional Firestore instance.
  */
-function subscribeToCollection(name, firebaseAppInstance) {
+function subscribeToCollection(name, firebaseAppInstance, firestoreInstance) {
   if (!collectionsState[name]) {
     // Ensure Firebase is initialized (or get the passed instance)
     const app = ensureFirebaseInitialized(firebaseAppInstance);
-    // Lazily get Firestore and Auth instances from the provided app.
-    const db = getFirestore(app);
+    // Use the provided Firestore instance if available; otherwise, get it from the app.
+    const db = firestoreInstance || getFirestore(app);
     const auth = getAuth(app);
 
+    console.log('Using Firestore instance:', db);
+    
     // Create reactive references.
     const data = ref([]);
     const loading = ref(true);
@@ -89,26 +92,24 @@ function subscribeToCollection(name, firebaseAppInstance) {
       }
     });
 
-    collectionsState[name] = {
-      data,
-      loading,
-      error,
-      unsubscribeAuth
-    };
+    // Store the reactive state and the auth unsubscribe function.
+    collectionsState[name] = { data, loading, error, unsubscribeAuth };
   }
 }
 
 /**
  * useFirestoreCollections
  *
- * Main composable that accepts an array of Firestore collection names and an optional Firebase app instance.
+ * Main composable that accepts an array of Firestore collection names and optional Firebase
+ * app and Firestore instances, and returns an object mapping each name to its reactive state.
  *
  * @param {string[]} collectionNames - An array of Firestore collection names.
  * @param {object} firebaseAppInstance - Optional Firebase app instance.
+ * @param {object} firestoreInstance - Optional Firestore instance.
  * @returns {Object} An object containing the reactive state for each collection.
  */
-export function useFirestoreCollections(collectionNames = [], firebaseAppInstance) {
-  collectionNames.forEach(name => subscribeToCollection(name, firebaseAppInstance));
+export function useFirestoreCollections(collectionNames = [], firebaseAppInstance, firestoreInstance) {
+  collectionNames.forEach(name => subscribeToCollection(name, firebaseAppInstance, firestoreInstance));
 
   const result = {};
   collectionNames.forEach(name => {
